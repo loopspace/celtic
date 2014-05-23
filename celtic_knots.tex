@@ -10,7 +10,6 @@
   \use:c{tikz@scan@one@point}\pgftransformshift #1\relax
 }
 
-
 \int_new:N \l__celtic_max_steps_int
 \int_new:N \l__celtic_int
 \int_new:N \l__celtic_flip_int
@@ -24,11 +23,13 @@
 \int_new:N \l__celtic_oy
 \int_new:N \l__celtic_lout
 \int_new:N \l__celtic_cross_int
+\int_new:N \l__celtic_component_int
 \fp_new:N \l__celtic_clip_fp
 \fp_new:N \l__celtic_inner_clip_fp
 \fp_new:N \l__celtic_inner_fp
 \fp_new:N \l__celtic_outer_fp
 \seq_new:N \l__celtic_path_seq
+\seq_new:N \l__celtic_component_seq
 \seq_new:N \l__celtic_crossing_seq
 \seq_new:N \l__celtic_tmpa_seq
 \clist_new:N \l__celtic_tmpa_clist
@@ -37,6 +38,10 @@
 \tl_new:N \g__celtic_colon_tl
 \bool_new:N \l__celtic_bounce_bool
 \bool_new:N \l__celtic_pbounce_bool
+
+\msg_new:nnnn { celtic } { max~ steps } { Limit~ of~ number~ of~ steps~ exceeded~ \msg_line_context:.}
+{ Paths~ may~ not~ be~ correctly~ constructed.~
+Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 
 \group_begin:
 \char_set_lccode:nn {`;}{`:}
@@ -51,76 +56,98 @@
 \cs_generate_variant:Nn \tl_head:N {c}
 \cs_generate_variant:Nn \tl_tail:N {c}
 \cs_generate_variant:Nn \tl_if_eq:nnTF {vnTF}
+\cs_generate_variant:Nn \tl_if_in:nnTF {nVTF}
 
 \int_set:Nn \l__celtic_max_steps_int {20}
 \fp_set:Nn \l__celtic_inner_fp {1}
 \fp_set:Nn \l__celtic_outer_fp {2}
 
-\cs_new_nopar:Npn \celtic_set_crossing:nnn #1#2#3
+\cs_new_nopar:Npn \celtic_do_crossing:nnn #1#2#3
 {
-  \tl_set:cn {crossing \int_eval:n {#1} - \int_eval:n{#2}}{#3}
-}
-
-\cs_generate_variant:Nn \tl_if_in:nnTF {nVTF}
-
-\cs_new_nopar:Npn \celtic_set_symmetric_crossing:nnn #1#2#3
-{
-  \tl_if_in:nVTF {#1} \g__celtic_colon_tl
+  \tl_if_empty:nTF {#1}
   {
-    \celtic_set_symmetric_crossing_auxa:w #1;{#2}{#3}
+    \tl_clear:c {crossing used \int_eval:n {#2} - \int_eval:n {#3}}
   }
   {
-    \celtic_set_symmetric_crossing_auxb:nnn {#1}{#2}{#3}
+    \tl_set:cn {crossing \int_eval:n {#2} - \int_eval:n{#3}}{#1}
+  }
+}
+
+\cs_new_nopar:Npn \celtic_maybe_symmetric:nnnn #1#2#3#4
+{
+  \tl_if_empty:nTF {#1}
+  {
+    \celtic_do_crossing:nnn {#2}{#3}{#4}
+  }
+  {
+    \celtic_do_crossing:nnn {#2}{#3}{#4}
+    \celtic_do_crossing:nnn {#2}{\l__celtic_width_int - #3}{#4}
+    \celtic_do_crossing:nnn {#2}{#3}{\l__celtic_height_int - #4}
+    \celtic_do_crossing:nnn {#2}{\l__celtic_width_int - #3}{\l__celtic_height_int - #4}
+  }
+}
+
+\cs_new_nopar:Npn \celtic_maybe_xrange:nnnn #1#2#3#4
+{
+  \tl_if_in:nVTF {#3} \g__celtic_colon_tl
+  {
+    \celtic_do_xrange:w {#1}{#2}#3\q_stop{#4}
+  }
+  {
+    \celtic_maybe_yrange:nnnn {#1}{#2}{#3}{#4}
+  }
+}
+
+\cs_new_nopar:Npn \celtic_maybe_yrange:nnnn #1#2#3#4
+{
+  \tl_if_in:nVTF {#4} \g__celtic_colon_tl
+  {
+    \celtic_do_yrange:w {#1}{#2}#3\q_stop{#4}
+  }
+  {
+    \celtic_maybe_symmetric:nnnn {#1}{#2}{#3}{#4}
   }
 }
 
 \tl_set:Nx \l_tmpa_tl
 {
-  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_set_symmetric_crossing_auxa:w ##1\tl_use:N \g__celtic_colon_tl ##2;##3##4
+  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_do_xrange:w ##1##2##3\tl_use:N \g__celtic_colon_tl ##4\exp_not:N \q_stop##5
   {
-    \exp_not:N \int_step_inline:nnnn {##1} {2} {##2}
+    \exp_not:N \int_step_inline:nnnn {##3} {2} {##4}
     {
-      \exp_not:N \celtic_set_symmetric_crossing_auxb:nnn {####1}{##3}{##4}
+      \exp_not:N \celtic_maybe_yrange:nnnn {##1}{##2} {####1}{##5}
     }
   }
-  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_set_symmetric_crossing_auxc:w ##1##2\tl_use:N \g__celtic_colon_tl ##3;##4
+
+  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_do_yrange:w ##1##2##3##4\tl_use:N \g__celtic_colon_tl ##5\exp_not:N \q_stop
   {
-    \exp_not:N\int_step_inline:nnnn {##2} {2} {##3}
+    \exp_not:N \int_step_inline:nnnn {##4} {2} {##5}
     {
-      \exp_not:N\celtic_set_symmetric_crossing_aux:nnn {##1}{####1}{##4}
+      \exp_not:N \celtic_maybe_symmetric:nnnn {##1}{##2}{##3}{####1}
     }
   }
 }
 \tl_use:N \l_tmpa_tl
 
-\cs_new_nopar:Npn \celtic_set_symmetric_crossing_auxb:nnn #1#2#3
+
+\cs_new_nopar:Npn \celtic_ignore_crossings:w #1,#2\q_stop
 {
-  \tl_if_in:nVTF {#2} \g__celtic_colon_tl
-  {
-    \celtic_set_symmetric_crossing_auxc:w {#1}#2;{#3}
-  }
-  {
-    \celtic_set_symmetric_crossing_aux:nnn {#1}{#2}{#3}
-  }
+  \celtic_maybe_xrange:nnnn {}{}{#1}{#2}
 }
 
-
-\cs_new_nopar:Npn \celtic_set_symmetric_crossing_aux:nnn #1#2#3
+\cs_new_nopar:Npn \celtic_ignore_symmetric_crossings:w #1,#2\q_stop
 {
-  \tl_set:cn {crossing \int_eval:n {#1} - \int_eval:n{#2}}{#3}
-  \tl_set:cn {crossing \int_eval:n {\l__celtic_width_int - #1} - \int_eval:n{#2}}{#3}
-  \tl_set:cn {crossing \int_eval:n {#1} - \int_eval:n{\l__celtic_height_int - #2}}{#3}
-  \tl_set:cn {crossing \int_eval:n {\l__celtic_width_int - #1} - \int_eval:n{\l__celtic_height_int - #2}}{#3}
+  \celtic_maybe_xrange:nnnn {s}{}{#1}{#2}
 }
 
-\cs_new_nopar:Npn \celtic_set_symmetric_crossing:w #1,#2,#3
+\cs_new_nopar:Npn \celtic_set_crossings:w #1,#2,#3\q_stop
 {
-  \celtic_set_symmetric_crossing:nnn {#1}{#2}{#3}
+  \celtic_maybe_xrange:nnnn {}{#3}{#1}{#2}
 }
 
-\cs_new_nopar:Npn \celtic_set_crossing:w #1,#2,#3
+\cs_new_nopar:Npn \celtic_set_symmetric_crossings:w #1,#2,#3\q_stop
 {
-  \celtic_set_crossing:nnn {#1}{#2}{#3}
+  \celtic_maybe_xrange:nnnn {s}{#3}{#1}{#2}
 }
 
 \cs_new_nopar:Npn \celtic_next_crossing:
@@ -267,16 +294,43 @@
     \clist_pop:NN \l__celtic_tmpa_clist \l__celtic_tmpa_tl
     \int_set:Nn \l__celtic_height_int {\l__celtic_tmpa_tl}
   },
+  width  .groups:n = { size },
+  height .groups:n = { size },
+  size   .groups:n = { size },
   crossings .code:n = {
     \seq_set_split:Nnn \l__celtic_tmpa_seq {;} {#1}
     \seq_map_inline:Nn \l__celtic_tmpa_seq {
-      \celtic_set_crossing:w ##1
+      \tl_if_empty:nF {##1}
+      {
+        \celtic_set_crossings:w ##1 \q_stop
+      }
     }
   },
   symmetric~ crossings .code:n = {
     \seq_set_split:Nnn \l__celtic_tmpa_seq {;} {#1}
     \seq_map_inline:Nn \l__celtic_tmpa_seq {
-      \celtic_set_symmetric_crossing:w ##1
+      \tl_if_empty:nF {##1}
+      {
+        \celtic_set_symmetric_crossings:w ##1 \q_stop
+      }
+    }
+  },
+  ignore~ crossings .code:n ={
+    \seq_set_split:Nnn \l__celtic_tmpa_seq {;} {#1}
+    \seq_map_inline:Nn \l__celtic_tmpa_seq {
+      \tl_if_empty:nF {##1}
+      {
+        \celtic_ignore_crossings:w ##1 \q_stop
+      }
+    }
+  },
+  ignore~ symmetric~ crossings .code:n ={
+    \seq_set_split:Nnn \l__celtic_tmpa_seq {;} {#1}
+    \seq_map_inline:Nn \l__celtic_tmpa_seq {
+      \tl_if_empty:nF {##1}
+      {
+        \celtic_ignore_symmetric_crossings:w ##1 \q_stop
+      }
     }
   },
   style .code:n = {
@@ -289,11 +343,12 @@
   outer~ clip .fp_set:N = \l__celtic_outer_fp,
 }
 
-\DeclareDocumentCommand \CelticDrawPath {O{}}
+\DeclareDocumentCommand \CelticDrawPath { m }
 {
   \group_begin:
   \pgfscope
   \seq_clear:N \l__celtic_path_seq
+  \seq_clear:N \l__celtic_component_seq
   \seq_clear:N \l__celtic_crossing_seq
   \int_set:Nn \l__celtic_flip_int {1}
 
@@ -306,7 +361,8 @@
 }
   }
 
-  \keys_set:nn { celtic } {#1}
+  \keys_set_groups:nnn { celtic } { size } {#1}
+  \keys_set_filter:nnn { celtic } { size } {#1}
 
   \path[celtic~ bar/.try, celtic~ surround/.try] (0,0) rectangle (\int_use:N \l__celtic_width_int, \int_use:N \l__celtic_height_int);
 
@@ -349,6 +405,7 @@
   }
   {
     \tl_clear:c {crossing used #1 - #2}
+    \int_incr:N \l__celtic_component_int
     \int_set:Nn \l__celtic_x {#1}
     \int_set:Nn \l__celtic_y {#2}
     \int_set_eq:NN \l__celtic_ox \l__celtic_x
@@ -370,11 +427,11 @@
       \celtic_next_crossing:
       \seq_put_left:NV \l__celtic_path_seq \l__celtic_path_tl
       \seq_put_left:NV \l__celtic_crossing_seq \l__celtic_crossing_tl
+      \seq_put_left:NV \l__celtic_component_seq \l__celtic_component_int
     }
     \int_compare:nT {\l__celtic_int > \l__celtic_max_steps_int}
     {
-      % L3 this
-      \message{Maximum~ of~ \int_use:N \l__celtic_max_steps_int ~ steps~ exceeded.}
+      \msg_warning:nn {celtic} { max~ steps }
     }
   }
 }
@@ -383,10 +440,11 @@
 
 \cs_new_nopar:Npn \celtic_render_path:
 {
-
   \seq_map_inline:Nn \l__celtic_path_seq
   {
-    \path[celtic~ path/.try] ##1;
+    \seq_pop:NN \l__celtic_component_seq \l__celtic_tmpa_tl
+    \seq_put_right:NV \l__celtic_component_seq \l__celtic_tmpa_tl
+    \path[celtic~ path/.try, celtic~ path~ \tl_use:N \l__celtic_tmpa_tl/.try] ##1;
   }
   \group_begin:
   \pgfscope
@@ -407,13 +465,15 @@
   \seq_map_inline:Nn \l__celtic_path_seq
   {
     \seq_pop:NN \l__celtic_crossing_seq \l__celtic_crossing_tl
+    \seq_pop:NN \l__celtic_component_seq \l__celtic_tmpa_tl
+    \seq_put_right:NV \l__celtic_component_seq \l__celtic_tmpa_tl
     \pgfscope
     \clip \l__celtic_crossing_tl +(-\fp_to_dim:N \l__celtic_inner_clip_fp,0) -- +(0,\fp_to_dim:N \l__celtic_inner_clip_fp) -- +(\fp_to_dim:N \l__celtic_inner_clip_fp,0) -- +(0,-\fp_to_dim:N \l__celtic_inner_clip_fp) --  +(-\fp_to_dim:N \l__celtic_inner_clip_fp,0);
-    \path[celtic~ path/.try,double~ background] ##1;
+    \path[celtic~ path/.try, celtic~ path~ \tl_use:N \l__celtic_tmpa_tl/.try, double~ background] ##1;
     \endpgfscope
     \pgfscope
     \clip \l__celtic_crossing_tl +(-\fp_to_dim:N \l__celtic_clip_fp,0) -- +(0,\fp_to_dim:N \l__celtic_clip_fp) -- +(\fp_to_dim:N \l__celtic_clip_fp,0) -- +(0,-\fp_to_dim:N \l__celtic_clip_fp) --  +(-\fp_to_dim:N \l__celtic_clip_fp,0);
-    \path[celtic~ path/.try,double~ foreground] ##1;
+    \path[celtic~ path/.try, celtic~ path~ \tl_use:N \l__celtic_tmpa_tl/.try,double~ foreground] ##1;
     \endpgfscope
   }
 }
@@ -447,6 +507,81 @@
 \makeatother
 
 \begin{document}
+
+\begin{tikzpicture}[
+  scale=.5,
+  celtic path/.style={
+    draw,
+    double=gray!40,
+    red,
+    double distance=4mm,
+    line width=1pt
+  },
+  celtic path 1/.style={
+    green!50!black,
+  },
+  celtic path 2/.style={
+    blue,
+  },
+  celtic path 3/.style={
+    red!50!black,
+  },
+  celtic surround/.style={
+    ultra thick,
+    black,
+    draw
+  },
+]
+\CelticDrawPath{
+  crossings={
+    2:10,3,-;
+  },
+  size={12,6},
+}
+\end{tikzpicture}
+\end{document}
+
+\begin{tikzpicture}[
+  scale=.5,
+  celtic path/.style={
+    draw,
+    double=gray!40,
+    red,
+    double distance=4mm,
+    line width=1pt
+  },
+  celtic path 1/.style={
+%    green
+  },
+  celtic path 2/.style={
+%    blue
+  },
+  celtic surround/.style={
+    ultra thick,
+    black,
+    draw
+  },
+]
+\CelticDrawPath{
+  size={12,12},
+  crossings={
+    5,6,-;
+    3,8,|;
+    7,8,|;
+    5,10,-;
+    7,10,-;
+    3,6,|;
+    9,8,|;
+    9,6,|;
+    9,10,|;
+    1,4,-;
+    9,2,|;
+  },
+  max steps={25}
+}
+\end{tikzpicture}
+\end{document}
+
 \begin{tikzpicture}[
   scale=.5,
   celtic path/.style={
@@ -462,13 +597,13 @@
     draw
   },
 ]
-\CelticDrawPath[
+\CelticDrawPath{
   size={12,12},
   symmetric crossings={
     2:10,3:9,-
   },
   at={(1,1)}
-]
+}
 \end{tikzpicture}
 
 \begin{tikzpicture}[
@@ -487,7 +622,7 @@
   },
 ]
 \draw[gray!30,ultra thin] (0,0) grid (20,12);
-\CelticDrawPath[
+\CelticDrawPath{
   size={20,12},
   symmetric crossings={
     10,1,|;
@@ -501,7 +636,7 @@
     3,6,-;
     1,4,-
   },
-]
+}
 \end{tikzpicture}
 
 \newpage
@@ -521,14 +656,18 @@
     draw
   },
 ]
-\CelticDrawPath[
-  size={20,40},
+\CelticDrawPath{
+  size={20,38},
   symmetric crossings={
-    3,4:36,|;
+    3,4:34,|;
     4:16,3,-
   },
+  ignore symmetric crossings={
+    4:10,5:20;
+    5:10,4:20
+  },
   max steps=1000
-]
+}
 \end{tikzpicture}
 
 
