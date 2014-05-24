@@ -120,7 +120,7 @@ and the derived files            celtic.ins
 %</driver>
 % \fi
 %
-% \CheckSum{}
+% \CheckSum{717}
 %
 % \CharacterTable
 %  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
@@ -211,6 +211,8 @@ and the derived files            celtic.ins
 \tl_new:N \l__celtic_tmpa_tl
 \tl_new:N \l__celtic_path_tl
 \tl_new:N \g__celtic_colon_tl
+\tl_new:N \l__celtic_bar_tl
+\tl_new:N \l__celtic_active_bar_tl
 \bool_new:N \l__celtic_bounce_bool
 \bool_new:N \l__celtic_pbounce_bool
 %    \end{macrocode}
@@ -229,6 +231,14 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 \group_end:
   \tl_set:Nn \g__celtic_colon_tl {;}
 }
+%    \end{macrocode}
+% Some packages mess with the catcode of \Verb+|+.
+%    \begin{macrocode}
+\tl_set:Nn \l__celtic_bar_tl {|}
+\group_begin:
+\char_set_catcode_active:N \|
+\tl_gset:Nn \l__celtic_active_bar_tl {|}
+\group_end:
 %    \end{macrocode}
 % We need a few variants of standard \LaTeX3 functions.
 %    \begin{macrocode}
@@ -310,7 +320,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 {
   \tl_if_in:nVTF {#4} \g__celtic_colon_tl
   {
-    \celtic_do_yrange:w {#1}{#2}#3\q_stop{#4}
+    \celtic_do_yrange:w {#1}{#2}{#3}#4\q_stop
   }
   {
     \celtic_maybe_symmetric:nnnn {#1}{#2}{#3}{#4}
@@ -397,294 +407,247 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 % \end{macro}
 %
 % \begin{macro}{\celtic_next_crossing:}
-% 
+% This is the function that does all the work.
+% Starting from an undercrossing, it computes the segment leading to the next undercrossing working out all of the ``bounces'' on the way.
 %    \begin{macrocode}
 \cs_new_nopar:Npn \celtic_next_crossing:
 {
 %    \end{macrocode}
-%
+% Clear our starting conditions.
 %    \begin{macrocode}
   \int_zero:N \l__celtic_cross_int
   \tl_clear:N \l__celtic_crossing_tl
   \tl_clear:N \l__celtic_path_tl
+  \bool_set_false:N \l__celtic_bounce_tl
 %    \end{macrocode}
-%
+% Start our path with a move to the initial point and record our current direction.
 %    \begin{macrocode}
   \tl_put_right:Nx \l__celtic_path_tl {(\int_use:N \l__celtic_x, \int_use:N \l__celtic_y)}
   \int_set:Nn \l__celtic_lout {(90 - \l__celtic_dx * 45) * \l__celtic_dy}
 %    \end{macrocode}
-%
+% We loop until we get to the second crossing on the path (the first will be the overpass).
 %    \begin{macrocode}
   \bool_do_until:nn {\int_compare_p:n {\l__celtic_cross_int > 1}}
   {
 %    \end{macrocode}
-%
+% We keep a record of whether the last bit contained a bounce.
 %    \begin{macrocode}
     \bool_set_eq:NN \l__celtic_pbounce_bool \l__celtic_bounce_bool
     \bool_set_false:N \l__celtic_bounce_bool
 %    \end{macrocode}
-%
+% Move to the next point in our current direction.
 %    \begin{macrocode}
     \int_add:Nn \l__celtic_x {\l__celtic_dx}
     \int_add:Nn \l__celtic_y {\l__celtic_dy}
 %    \end{macrocode}
-%
+% Now we look to see if we should bounce.
+% Is the crossing defined?
 %    \begin{macrocode}
     \tl_if_exist:cT {crossing \int_use:N \l__celtic_x - \int_use:N       \l__celtic_y}
     {
 %    \end{macrocode}
-%
+% Yes, so we bounce.
+% But which way?
 %    \begin{macrocode}
-      \tl_if_eq:vnTF {crossing \int_use:N \l__celtic_x - \int_use:N \l__celtic_y} {|}
+      \tl_if_eq:cNTF {crossing \int_use:N \l__celtic_x - \int_use:N \l__celtic_y} \l__celtic_bar_tl
       {
 %    \end{macrocode}
-%
+% Vertical wall.
+% Have we just bounced?
 %    \begin{macrocode}
         \bool_if:NTF \l__celtic_pbounce_bool
         {
 %    \end{macrocode}
-%
+% Yes, so the next part of the path is a right angle.
 %    \begin{macrocode}
           \tl_put_right:Nn \l__celtic_path_tl { -| }
         }
         {
 %    \end{macrocode}
-%
+% No, so the next part of the path is a curve.
+% (This is where we use the direction that we recorded earlier.)
 %    \begin{macrocode}
           \tl_put_right:Nx \l__celtic_path_tl { to[out=\int_eval:n
 {(90 - 45*\l__celtic_dx)*\l__celtic_dy}, in=\int_eval:n
 {-90*\l__celtic_dy}] }
         }
 %    \end{macrocode}
-%
+% We record the new direction and ``bounce'' our direction vector.
+% Then we add our new point to the path (which, due to the bounce, is offset).
 %    \begin{macrocode}
         \int_set:Nn \l__celtic_lout {90*\l__celtic_dy}
         \int_set:Nn \l__celtic_dx {-\l__celtic_dx}
-        \tl_put_right:Nx  \l__celtic_path_tl {(\fp_eval:n           {\int_use:N \l__celtic_x + .5 * \int_use:N \l__celtic_dx}, \int_use:N \l__celtic_y)}
+        \tl_put_right:Nx  \l__celtic_path_tl {(\fp_eval:n {\int_use:N \l__celtic_x + .5 * \int_use:N \l__celtic_dx}, \int_use:N \l__celtic_y)}
 %    \end{macrocode}
-%
+% We bounced, so record that too.
 %    \begin{macrocode}
         \bool_set_true:N \l__celtic_bounce_bool
       }
       {
 %    \end{macrocode}
-%
+% At this point, we've bounced but our bounce was horizontal so we do the same as for the vertical but all turned round.
 %    \begin{macrocode}
         \bool_if:NTF \l__celtic_pbounce_bool
         {
 %    \end{macrocode}
-%
+% We're out from a bounce, so turn at right angles.
 %    \begin{macrocode}
           \tl_put_right:Nn \l__celtic_path_tl { |- }
         }
         {
 %    \end{macrocode}
-%
+% We're not out from a bounce, so we curve ...
 %    \begin{macrocode}
           \tl_put_right:Nx \l__celtic_path_tl { to[out=\int_eval:n {(90 - 45*\l__celtic_dx)*\l__celtic_dy}, in=\int_eval:n {90 + 90*\l__celtic_dx}] }
         }
 %    \end{macrocode}
-%
+% ... and record our new direction and out angle.
 %    \begin{macrocode}
         \int_set:Nn \l__celtic_lout {90-90*\l__celtic_dx}
         \int_set:Nn \l__celtic_dy {-\l__celtic_dy}
 %    \end{macrocode}
-%
+% Now we add our new position (adjusted from the bounce) to the path.
 %    \begin{macrocode}
         \tl_put_right:Nx \l__celtic_path_tl {(\int_use:N \l__celtic_x, \fp_eval:n {\int_use:N \l__celtic_y + .5 * \int_use:N \l__celtic_dy})}
 %    \end{macrocode}
-%
+% And record the fact that we've bounced.
 %    \begin{macrocode}
         \bool_set_true:N \l__celtic_bounce_bool
       }
     }
 %    \end{macrocode}
-%
+% Now we check to see if we're at the edge of the rectangle, starting with the left.
 %    \begin{macrocode}
     \int_compare:nT {\l__celtic_x == 0}
     {
 %    \end{macrocode}
-%
+% Yes, so treat this as a vertical bounce.
 %    \begin{macrocode}
       \bool_if:NTF \l__celtic_pbounce_bool
       {
 %    \end{macrocode}
-%
+% Previous bounce, so right angle.
 %    \begin{macrocode}
         \tl_put_right:Nn \l__celtic_path_tl { -| }
       }
       {
 %    \end{macrocode}
-%
+% No previous bounce, so curve.
 %    \begin{macrocode}
         \tl_put_right:Nx \l__celtic_path_tl { to[out=\int_eval:n {(90 - 45*\l__celtic_dx)*\l__celtic_dy}, in=\int_eval:n {-90*\l__celtic_dy}] }
       }
 %    \end{macrocode}
-%
+% Record our out angle and change our direction.
 %    \begin{macrocode}
       \int_set:Nn \l__celtic_lout {90*\l__celtic_dy}
       \int_set:Nn \l__celtic_dx {-\l__celtic_dx}
 %    \end{macrocode}
-%
+% Add the correct position to the path.
 %    \begin{macrocode}
       \tl_put_right:Nx  \l__celtic_path_tl {(\fp_eval:n {\int_use:N \l__celtic_x + .5 * \int_use:N \l__celtic_dx}, \int_use:N \l__celtic_y)}
 %    \end{macrocode}
-%
+% We've bounced.
 %    \begin{macrocode}
       \bool_set_true:N \l__celtic_bounce_bool
     }
 %    \end{macrocode}
-%
+% Same for the right-hand edge.
 %    \begin{macrocode}
     \int_compare:nT {\l__celtic_x == \l__celtic_width_int}
     {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \bool_if:NTF \l__celtic_pbounce_bool
       {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
         \tl_put_right:Nn \l__celtic_path_tl { -| }
       }
       {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
         \tl_put_right:Nx \l__celtic_path_tl { to[out=\int_eval:n {(90 - 45*\l__celtic_dx)*\l__celtic_dy}, in=\int_eval:n {-90*\l__celtic_dy}] }
       }
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \int_set:Nn \l__celtic_lout {90*\l__celtic_dy}
       \int_set:Nn \l__celtic_dx {-\l__celtic_dx}
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \tl_put_right:Nx \l__celtic_path_tl {(\fp_eval:n {\int_use:N \l__celtic_x + .5 * \int_use:N \l__celtic_dx}, \int_use:N \l__celtic_y)}
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \bool_set_true:N \l__celtic_bounce_bool
     }
 %    \end{macrocode}
-%
+% Now the lower edge.
 %    \begin{macrocode}
     \int_compare:nT {\l__celtic_y == 0}
     {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \bool_if:NTF \l__celtic_pbounce_bool
       {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
         \tl_put_right:Nn \l__celtic_path_tl { |- }
       }
       {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
         \tl_put_right:Nx \l__celtic_path_tl { to[out=\int_eval:n {(90 - 45*\l__celtic_dx)*\l__celtic_dy}, in=\int_eval:n {90 + 90*\l__celtic_dx}] }
       }
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \int_set:Nn \l__celtic_lout {90-90*\l__celtic_dx}
       \int_set:Nn \l__celtic_dy {-\l__celtic_dy}
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \tl_put_right:Nx \l__celtic_path_tl {(\int_use:N \l__celtic_x, \fp_eval:n {\int_use:N \l__celtic_y + .5 * \int_use:N \l__celtic_dy})}
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \bool_set_true:N \l__celtic_bounce_bool
     }
 %    \end{macrocode}
-%
+% And the upper edge.
 %    \begin{macrocode}
     \int_compare:nT {\l__celtic_y == \l__celtic_height_int}
     {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \bool_if:NTF \l__celtic_pbounce_bool
       {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
         \tl_put_right:Nn \l__celtic_path_tl { |- }
       }
       {
-%    \end{macrocode}
-%
-%    \begin{macrocode}
         \tl_put_right:Nx \l__celtic_path_tl { to[out=\int_eval:n {(90 - 45*\l__celtic_dx)*\l__celtic_dy}, in=\int_eval:n {90 + 90*\l__celtic_dx}] }
       }
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \int_set:Nn \l__celtic_lout {-90+90*\l__celtic_dx}
       \int_set:Nn \l__celtic_dy {-\l__celtic_dy}
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \tl_put_right:Nx \l__celtic_path_tl {(\int_use:N \l__celtic_x, \fp_eval:n {\int_use:N \l__celtic_y + .5 * \int_use:N \l__celtic_dy})}
-%    \end{macrocode}
-%
-%    \begin{macrocode}
       \bool_set_true:N \l__celtic_bounce_bool
     }
 %    \end{macrocode}
-%
+% Did we bounce this time?
 %    \begin{macrocode}
     \bool_if:NF \l__celtic_bounce_bool
     {
 %    \end{macrocode}
-%
+% Did we bounce last time?
 %    \begin{macrocode}
       \bool_if:NTF \l__celtic_pbounce_bool
       {
 %    \end{macrocode}
-%
+% Yes, so the second half is a curve.
 %    \begin{macrocode}
         \tl_put_right:Nx \l__celtic_path_tl { to[out=\int_use:N \l__celtic_lout,in=\int_eval:n {(-90 - 45 * \l__celtic_dx)*\l__celtic_dy}] }
       }
       {
 %    \end{macrocode}
-%
+% No, so the second half is a straight line.
 %    \begin{macrocode}
         \tl_put_right:Nn \l__celtic_path_tl { -- }
       }
 %    \end{macrocode}
-%
+% The next crossing.
 %    \begin{macrocode}
       \tl_put_right:Nx  \l__celtic_path_tl { (\int_use:N         \l__celtic_x, \int_use:N \l__celtic_y)}
 %    \end{macrocode}
-%
+% If we haven't already gone over a crossing, this is our overcrossing.
 %    \begin{macrocode}
       \tl_if_empty:NTF \l__celtic_crossing_tl
       {
 %    \end{macrocode}
-%
+% So we record this as our overcrossing.
 %    \begin{macrocode}
         \tl_set:Nx \l__celtic_crossing_tl {(\int_use:N         \l__celtic_x, \int_use:N \l__celtic_y)}
       }
       {
 %    \end{macrocode}
-%
+% Otherwise, it's the undercrossing so we note that we've visited this one. 
 %    \begin{macrocode}
         \tl_clear:c {crossing used \int_use:N \l__celtic_x - \int_use:N \l__celtic_y}
       }
 %    \end{macrocode}
-%
+% Increment the crossing count.
 %    \begin{macrocode}
       \int_incr:N \l__celtic_cross_int
 %    \end{macrocode}
-%
+% Record our outward angle.
 %    \begin{macrocode}
       \int_set:Nn \l__celtic_lout {(90 - \l__celtic_dx * 45) * \l__celtic_dy}
     }
@@ -812,6 +775,13 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
   \seq_clear:N \l__celtic_crossing_seq
   \int_set:Nn \l__celtic_flip_int {1}
 %    \end{macrocode}
+% Figure out if \Verb+|+ is active or not (\Verb+fancyvrb+ sets it active).
+%    \begin{macrocode}
+\int_compare:nT {\char_value_catcode:n {`\|} = 13}
+{
+  \tl_set_eq:NN \l__celtic_bar_tl \l__celtic_active_bar_tl
+}
+%    \end{macrocode}
 % Clear all the crossing data.
 %    \begin{macrocode}
   \int_step_inline:nnnn {1} {1} {\l__celtic_height_int-1}
@@ -843,7 +813,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 {
   \tl_if_exist:cT {crossing ####1 - ##1}
   {
-    \tl_if_eq:vnTF {crossing ####1 - ##1} {|}
+    \tl_if_eq:cNTF {crossing ####1 - ##1} \l__celtic_bar_tl
     {
 %    \end{macrocode}
 % Vertical crossing.
