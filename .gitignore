@@ -6,6 +6,7 @@
 *.fls
 *.out
 *.toc
+*.ins
 
 ## Intermediate documents:
 *.dvi
@@ -87,3 +88,6 @@ sympy-plots-for-*.tex/
 
 # xindy
 *.xdy
+
+# backups
+*~
