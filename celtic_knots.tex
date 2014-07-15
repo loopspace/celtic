@@ -1,9 +1,51 @@
 \immediate\write18{tex celtic.dtx}
-\documentclass{article}
+\documentclass{standalone}
 \usepackage{tikz}
 \usetikzlibrary{celtic}
 
 \begin{document}
+
+\begin{tikzpicture}[
+  scale=.5,
+  celtic path/.style={
+    draw,
+    double=white,%gray!40,
+    red,
+    double distance=1mm,
+    line width=4pt
+  },
+  celtic path 1/.style={
+    green!50!black,
+  },
+  celtic path 2/.style={
+    blue,
+  },
+  celtic path 3/.style={
+    red!50!black,
+  },
+  celtic surround/.style={
+    ultra thick,
+%    black,
+%    fill=gray!40
+  },
+]
+\CelticDrawPath{
+  symmetric crossings={
+    8,1:3,|;
+    14,1,|;
+    9,4,-;
+    12,3,-;
+    4,1,|;
+    4,3,|;
+%    10,5,-;
+  },
+  size={28,10},
+  max steps=70
+}
+\path (current bounding box.west) +(-1,0);
+\path (current bounding box.east) +(1,0);
+\end{tikzpicture}
+\end{document}
 
 \begin{tikzpicture}[
   scale=.5,
@@ -41,42 +83,6 @@
 \end{tikzpicture}
 
 
-\begin{tikzpicture}[
-  scale=.5,
-  celtic path/.style={
-    draw,
-    double=gray!40,
-    red,
-    double distance=1mm,
-    line width=4pt
-  },
-  celtic path 1/.style={
-    green!50!black,
-  },
-  celtic path 2/.style={
-    blue,
-  },
-  celtic path 3/.style={
-    red!50!black,
-  },
-  celtic surround/.style={
-    ultra thick,
-    black,
-    fill=black
-  },
-]
-\CelticDrawPath{
-  symmetric crossings={
-    4,1:3,|;
-    10,1,|;
-    5,4,-;
-    8,3,-;
-%    10,5,-;
-  },
-  size={20,10},
-  max steps=50
-}
-\end{tikzpicture}
 
 
 \begin{tikzpicture}[
