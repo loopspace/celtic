@@ -204,6 +204,7 @@ and the derived files            celtic.ins
 \fp_new:N \l__celtic_inner_fp
 \fp_new:N \l__celtic_outer_fp
 \seq_new:N \l__celtic_path_seq
+\seq_new:N \l__celtic_overpath_seq
 \seq_new:N \l__celtic_component_seq
 \seq_new:N \l__celtic_crossing_seq
 \seq_new:N \l__celtic_tmpa_seq
@@ -213,8 +214,22 @@ and the derived files            celtic.ins
 \tl_new:N \g__celtic_colon_tl
 \tl_new:N \l__celtic_bar_tl
 \tl_new:N \l__celtic_active_bar_tl
+\tl_new:N \l__celtic_start_tl
 \bool_new:N \l__celtic_bounce_bool
 \bool_new:N \l__celtic_pbounce_bool
+
+\cs_new_nopar:Npn \tl_split_after:Nnn #1#2#3
+{
+  \cs_set:Npn \tl_split_aux:nnn ##1#3##2 \q_stop: {#3##2}
+  \tl_set:Nx #1 {\tl_split_aux:nnn #2 \q_stop:}
+}
+\cs_generate_variant:Nn \tl_split_after:Nnn {NVn}
+\cs_new_nopar:Npn \tl_split_before:Nnn #1#2#3
+{
+  \cs_set:Npn \tl_split_aux:nnn ##1#3##2 \q_stop: {##1#3}
+  \tl_set:Nx #1 {\tl_split_aux:nnn #2 \q_stop:}
+}
+\cs_generate_variant:Nn \tl_split_before:Nnn {NVn}
 %    \end{macrocode}
 % Define our warning message.
 %    \begin{macrocode}
@@ -418,7 +433,9 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
   \int_zero:N \l__celtic_cross_int
   \tl_clear:N \l__celtic_crossing_tl
   \tl_clear:N \l__celtic_path_tl
+  \tl_clear:N \l__celtic_overpath_tl
   \bool_set_false:N \l__celtic_bounce_tl
+  \tl_set:Nx \l__celtic_start_tl {(\int_use:N \l__celtic_x, \int_use:N \l__celtic_y)}
 %    \end{macrocode}
 % Start our path with a move to the initial point and record our current direction.
 %    \begin{macrocode}
@@ -652,6 +669,25 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
       \int_set:Nn \l__celtic_lout {(90 - \l__celtic_dx * 45) * \l__celtic_dy}
     }
   }
+%    \end{macrocode}
+% Is our overcrossing one of the undercrossings?
+% If so, remove the initial or final segment as appropriate.
+%    \begin{macrocode}
+  \tl_set_eq:NN \l__celtic_overpath_tl \l__celtic_path_tl
+  \tl_set:Nx \l__celtic_tmpa_tl {(\int_use:N \l__celtic_x, \int_use:N
+\l__celtic_y)}
+  \tl_if_eq:NNT \l__celtic_crossing_tl \l__celtic_tmpa_tl
+  {
+    \tl_reverse:N \l__celtic_overpath_tl
+    \tl_set:Nx \l__celtic_overpath_tl {\tl_tail:N \l__celtic_overpath_tl}
+    \tl_split_after:NVn \l__celtic_overpath_tl \l__celtic_overpath_tl {)}
+    \tl_reverse:N \l__celtic_overpath_tl
+  }
+  \tl_if_eq:NNT \l__celtic_crossing_tl \l__celtic_start_tl
+  {
+    \tl_set:Nx \l__celtic_overpath_tl {\tl_tail:N \l__celtic_overpath_tl}
+    \tl_split_after:NVn \l__celtic_overpath_tl \l__celtic_overpath_tl {(}
+  }
 }
 %    \end{macrocode}
 % \end{macro}
@@ -771,6 +807,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
   \group_begin:
   \pgfscope
   \seq_clear:N \l__celtic_path_seq
+  \seq_clear:N \l__celtic_overpath_seq
   \seq_clear:N \l__celtic_component_seq
   \seq_clear:N \l__celtic_crossing_seq
   \int_set:Nn \l__celtic_flip_int {1}
@@ -870,7 +907,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
   }
   {
 %    \end{macrocode}
-% Those tests failed, so we procede.
+% Those tests failed, so we proceed.
 % First, we mark the crossing as used and set our initial data.
 % Position, original position, and direction.
 %    \begin{macrocode}
@@ -911,6 +948,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 % Then return to the start of the loop.
 %    \begin{macrocode}
       \seq_put_left:NV \l__celtic_path_seq \l__celtic_path_tl
+      \seq_put_left:NV \l__celtic_overpath_seq \l__celtic_overpath_tl
       \seq_put_left:NV \l__celtic_crossing_seq \l__celtic_crossing_tl
       \seq_put_left:NV \l__celtic_component_seq \l__celtic_component_int
     }
@@ -981,7 +1019,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 %
 % This second pass through the segments redraws each one clipped to a diamond neighbourhood of its over-crossing.
 %    \begin{macrocode}
-  \seq_map_inline:Nn \l__celtic_path_seq
+  \seq_map_inline:Nn \l__celtic_overpath_seq
   {
 %    \end{macrocode}
 % We get the crossing coordinate.
