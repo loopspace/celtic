@@ -211,7 +211,7 @@ and the derived files            celtic.ins
 \clist_new:N \l__celtic_tmpa_clist
 \tl_new:N \l__celtic_tmpa_tl
 \tl_new:N \l__celtic_path_tl
-\tl_new:N \g__celtic_colon_tl
+\tl_new:N \c__celtic_colon_tl
 \tl_new:N \l__celtic_bar_tl
 \tl_new:N \l__celtic_active_bar_tl
 \tl_new:N \l__celtic_start_tl
@@ -240,12 +240,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 % Using a colon for a range separator was possibly not the best idea I ever had, seeing as \LaTeX3 alters its catcode.
 % So we need to get creative.
 %    \begin{macrocode}
-\group_begin:
-\char_set_lccode:nn {`;}{`:}
-\tl_to_lowercase:n {
-\group_end:
-  \tl_set:Nn \g__celtic_colon_tl {;}
-}
+\tl_const:Nx \c__celtic_colon_tl { \token_to_str:N : }
 %    \end{macrocode}
 % Some packages mess with the catcode of \Verb+|+.
 %    \begin{macrocode}
@@ -317,7 +312,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 %    \begin{macrocode}
 \cs_new_nopar:Npn \celtic_maybe_xrange:nnnn #1#2#3#4
 {
-  \tl_if_in:nVTF {#3} \g__celtic_colon_tl
+  \tl_if_in:nVTF {#3} \c__celtic_colon_tl
   {
     \celtic_do_xrange:w {#1}{#2}#3\q_stop{#4}
   }
@@ -333,7 +328,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 %    \begin{macrocode}
 \cs_new_nopar:Npn \celtic_maybe_yrange:nnnn #1#2#3#4
 {
-  \tl_if_in:nVTF {#4} \g__celtic_colon_tl
+  \tl_if_in:nVTF {#4} \c__celtic_colon_tl
   {
     \celtic_do_yrange:w {#1}{#2}{#3}#4\q_stop
   }
@@ -345,8 +340,8 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 % \end{macro}
 %
 % When processing ranges, we need to use colons with the original catcode.
-% We've stored one in \Verb+\g__celtic_colon_tl+ but we need to use it in actuality.
-% So we make a token list containing the definitions we want to make, expanding \Verb+\g__celtic_colon_tl+ to its colon, but not expanding anything else.
+% We've stored one in \Verb+\c__celtic_colon_tl+ but we need to use it in actuality.
+% So we make a token list containing the definitions we want to make, expanding \Verb+\c__celtic_colon_tl+ to its colon, but not expanding anything else.
 %    \begin{macrocode}
 \tl_set:Nx \l_tmpa_tl
 {
@@ -355,7 +350,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 % \begin{macro}{\celtic_do_xrange:w}
 % This splits the \Verb+x+-coordinate into a range and repeats the function for each intermediate value.
 %    \begin{macrocode}
-  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_do_xrange:w ##1##2##3\tl_use:N \g__celtic_colon_tl ##4\exp_not:N \q_stop##5
+  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_do_xrange:w ##1##2##3\tl_use:N \c__celtic_colon_tl ##4\exp_not:N \q_stop##5
   {
     \exp_not:N \int_step_inline:nnnn {##3} {2} {##4}
     {
@@ -368,7 +363,7 @@ Consider~ raising~ the~ limit~ from  \int_use:N \l__celtic_max_steps_int.}
 % \begin{macro}{\celtic_do_yrange:w}
 % Same, for the \Verb+y+-coordinate.
 %    \begin{macrocode}
-  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_do_yrange:w ##1##2##3##4\tl_use:N \g__celtic_colon_tl ##5\exp_not:N \q_stop
+  \exp_not:N \cs_new_nopar:Npn \exp_not:N \celtic_do_yrange:w ##1##2##3##4\tl_use:N \c__celtic_colon_tl ##5\exp_not:N \q_stop
   {
     \exp_not:N \int_step_inline:nnnn {##4} {2} {##5}
     {
